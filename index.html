@@ -152,11 +152,55 @@
         font-weight: bold;
       }
 
+      .modal-subtitle {
+        font-style: italic;
+        font-size: 0.8em;
+      }
+
+      #submit-new-cases {
+        margin-top: 10px;
+      }
+
       .close:hover,
       .close:focus {
         color: black;
         text-decoration: none;
         cursor: pointer;
+      }
+      .lds-ring {
+        display: inline-block;
+        position: relative;
+        width: 80px;
+        height: 80px;
+      }
+      .lds-ring div {
+        box-sizing: border-box;
+        display: block;
+        position: absolute;
+        width: 64px;
+        height: 64px;
+        margin: 8px;
+        border: 8px solid #fff;
+        border-radius: 50%;
+        animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        border-color: rgb(202, 202, 202) transparent transparent transparent;
+      }
+      .lds-ring div:nth-child(1) {
+        animation-delay: -0.45s;
+      }
+      .lds-ring div:nth-child(2) {
+        animation-delay: -0.3s;
+      }
+      .lds-ring div:nth-child(3) {
+        animation-delay: -0.15s;
+      }
+      @keyframes lds-ring {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
@@ -165,6 +209,35 @@
     <div id="graph-wrapper">
       <div id="graph"></div>
     </div>
+    <!-- DATA INPUT -->
+    <div id="load-spinner" class="modal">
+      <div class="modal-content">
+        <!-- <span class="close">&times;</span> -->
+        <p id="modal-header"><h3>Please wait... fetching data</h3></p>
+        <p class="modal-subtitle">This can sometimes take a few minutes (The IDPH feed is slow!)</p>
+        <div class="lds-ring">
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
+    </div>
+    <div id="data-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <p id="modal-header"></p>
+        <h3>Looks like today's cases aren't in the system yet.</h3>
+        <p class="modal-subtitle">
+          Enter them below, or close this window to use data through yesterday.
+        </p>
+        <div id="manual-new-cases">
+          <input type="number" id="new-case-box" />
+        </div>
+        <button type="submit" id="submit-new-cases">Confirm</button>
+      </div>
+    </div>
+    <!-- DOWNLOAD -->
     <div id="download-modal" class="modal">
       <div class="modal-content">
         <span class="close">&times;</span>
@@ -469,12 +542,14 @@
             "translate(" + this.margin.left + ", " + this.margin.top + ")"
           );
       }
+
       function addDays(date, days) {
         const copy = new Date(Number(date));
         copy.setDate(date.getDate() + days);
         return copy;
       }
-      function ILCurve(parentDiv) {
+
+      function ILCurve(parentDiv, todayNewCases) {
         let c = new vizCanvas(parentDiv);
 
         function convertDates(d) {
@@ -487,6 +562,7 @@
         d3.csv(
           "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"
         )
+          // filter data for IL
           .then(function (data) {
             data = data
               .filter((d) => d.state == "Illinois")
@@ -495,6 +571,7 @@
 
             return data;
           })
+          // calculate daily new cases
           .then(function (data) {
             console.log(data);
             function getNewCases(currentVal) {
@@ -512,6 +589,7 @@
             data = data.map(getNewCases).filter((d) => d.new_cases > 10);
             return data;
           })
+          // calculate rollling average
           .then(function (data) {
             function getRollAvg(currentVal) {
               let prevDates = data.filter((d) => d.date <= currentVal.date),
@@ -529,14 +607,17 @@
               currentVal["rollavg"] = avg;
               return currentVal;
             }
+
             function checkNewData(data) {
               var today = new Date().getTime();
               if (today > d3.max(data, (d) => d.date)) {
-                var updateCases = Number(prompt("Enter today's new cases")),
-                  todayDate = addDays(new Date(d3.max(data, (d) => d.date)), 1);
+                var todayDate = addDays(
+                  new Date(d3.max(data, (d) => d.date)),
+                  1
+                );
 
                 var todayData = {
-                  new_cases: updateCases,
+                  new_cases: todayNewCases,
                   date: todayDate,
                   fips: 17,
                   state: "Illinois",
@@ -550,8 +631,14 @@
 
               return data;
             }
-            return checkNewData(data).map(getRollAvg);
+
+            if (todayNewCases !== undefined) {
+              return checkNewData(data).map(getRollAvg);
+            } else {
+              return data.map(getRollAvg);
+            }
           })
+          // draw the graph
           .then(function (data) {
             let xScale = d3
               .scaleTime()
@@ -701,17 +788,74 @@
               .attr("class", "line")
               .attr("d", line);
           })
+          // show download modal
           .then(function () {
-            let modal = document.getElementById("download-modal"),
-              span = document.getElementsByClassName("close")[0];
+            var downloadModal = document.querySelector("#download-modal"),
+              // btn = downloadModal.querySelector("#submit-case-btn"),
+              close = downloadModal.querySelector(".close");
 
-            modal.style.display = "block";
-            span.addEventListener("click", function () {
-              modal.style.display = "none";
+            downloadModal.style.display = "block";
+
+            close.addEventListener("click", function () {
+              downloadModal.style.display = "none";
             });
           });
       }
-      ILCurve("#graph");
+
+      function main() {
+        var prog = document.querySelector("#load-spinner");
+        prog.style.display = "block";
+
+        var data;
+        url = "https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.dph.illinois.gov%2Fnews%2Ffeed";
+        fetch(url)
+          .then((r) => r.json())
+          .then((d) => {
+            prog.style.display = "none";
+            for (let i = 0; i < d.items.length; i++) {
+              var item = d.items[i],
+                title = item.title,
+                pubDate = new Date(item.pubDate).setHours(0, 0, 0, 0),
+                today = new Date().setHours(0, 0, 0, 0),
+                foundToday = false;
+
+              if (title.startsWith("Public Health Officials Announce") && pubDate === today) {
+                var pat = /Public Health Officials Announce ([\d\,]+) New Cases of Coronavirus Disease/,
+                  m = pat.exec(title),
+                  n = Number(m[1].replace(",", ""));
+
+                foundToday = true;
+                ILCurve("#graph", n);
+                break;
+              }
+            }
+            if (!(foundToday)) {
+              // if no match, show the modal and take manual input
+              var dataModal = document.querySelector("#data-modal"),
+                btn = dataModal.querySelector("#submit-new-cases"),
+                close = dataModal.querySelector(".close");
+
+              dataModal.style.display = "block";
+
+              close.addEventListener("click", function () {
+                dataModal.style.display = "none";
+                ILCurve("#graph");
+              });
+
+              btn.addEventListener("click", function () {
+                var newVal = Number(document.querySelector("#new-case-box").value);
+                dataModal.style.display = "none";
+                ILCurve("#graph", newVal);
+              });
+            }
+          }).catch((err) => {
+            console.log(err)
+            alert("there was a problem fetching the data")
+          })
+      }
+
+      main()
+
     </script>
   </body>
 </html>
