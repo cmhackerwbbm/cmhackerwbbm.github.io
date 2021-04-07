@@ -157,7 +157,9 @@
         font-size: 0.8em;
       }
 
-      #submit-new-cases {
+      .hint {font-size: 0.9rem; font-style: italic;}
+
+      .submit-btn {
         margin-top: 10px;
       }
 
@@ -234,15 +236,30 @@
         <div id="manual-new-cases">
           <input type="number" id="new-case-box" />
         </div>
-        <button type="submit" id="submit-new-cases">Confirm</button>
+        <button type="submit" class="submit-btn" id="submit-new-cases">Confirm</button>
       </div>
     </div>
     <!-- DOWNLOAD -->
+    <div id="filter-modal" class="modal">
+        <div class="modal-content">
+          <p id="modal-header"></p>
+          <h3>Filter time period</h3>
+          <div id="inputs">
+              <span class="input-label">Start date: </span><input type="date" id="start-date"><br><br>
+              <span class="input-label">End date: </span><input type="date" id="end-date">
+          </div>
+          <div class="btn-wrapper">
+            <button class="submit-btn" id="submit-time-period">
+                <h4>Submit</h4>
+              </button>
+          </div>
+        </div>
+      </div>
     <div id="download-modal" class="modal">
       <div class="modal-content">
         <span class="close">&times;</span>
         <p id="modal-header"></p>
-        <h3>Your graphic is ready!</h3>
+        <p class="hint">Send this file to art. You can close this window and screenshot the graph to get an image.</p>
         <button id="download-svg" onclick="downloadSVG()">
           <h4>Download SVG File</h4>
         </button>
@@ -570,7 +587,37 @@
               .sort((x, y) => d3.ascending(x.date, y.date));
 
             return data;
-          })
+          }).then(function (data) {
+            var filterModal = document.querySelector("#filter-modal");
+
+            filterModal.style.display = "block";
+
+
+            document.getElementById("start-date").valueAsDate = new Date(2020, 2, 1)
+            document.getElementById("end-date").valueAsDate = new Date()
+
+            var submit = document.querySelector("#submit-time-period");
+            var clickPromise = new Promise(function(resolve) {
+                var p = this;
+                return document.querySelector("#submit-time-period").addEventListener("click", function(e) {
+                    var minTime = document.getElementById("start-date").valueAsDate.getTime(),
+                        maxTime = document.getElementById("end-date").valueAsDate.getTime()
+                    filterModal.style.display = null
+                    resolve([{"min": minTime, "max": maxTime}, data])
+                }, {once: true})
+            }).then(function(result) {
+                var dates = result[0],
+                    data = result[1];
+
+                console.log(dates)
+                
+                data = data
+                    .filter(function(d) {
+                        return d.date >= dates["min"] && d.date <= dates["max"]  
+                    })
+
+              return data
+            })
           // calculate daily new cases
           .then(function (data) {
             console.log(data);
@@ -698,7 +745,7 @@
 
             var legend = {
               x: xScale(d3.min(data, (d) => d.date)) + c.width / 20,
-              y: yScale(d3.max(data, (d) => d.new_cases)),
+              y: yScale(d3.max(data, (d) => d.new_cases)) - 30,
               size: c.height / 71.6,
             };
 
@@ -791,7 +838,6 @@
           // show download modal
           .then(function () {
             var downloadModal = document.querySelector("#download-modal"),
-              // btn = downloadModal.querySelector("#submit-case-btn"),
               close = downloadModal.querySelector(".close");
 
             downloadModal.style.display = "block";
@@ -799,6 +845,7 @@
             close.addEventListener("click", function () {
               downloadModal.style.display = "none";
             });
+          });
           });
       }
 
