@@ -592,38 +592,7 @@
               .sort((x, y) => d3.ascending(x.date, y.date));
 
             return data;
-          }).then(function (data) {
-            var filterModal = document.querySelector("#filter-modal");
-
-            filterModal.style.display = "block";
-
-
-            document.getElementById("start-date").valueAsDate = new Date(2020, 2, 1)
-            document.getElementById("end-date").valueAsDate = new Date()
-
-            var submit = document.querySelector("#submit-time-period");
-            var clickPromise = new Promise(function(resolve) {
-                var p = this;
-                return document.querySelector("#submit-time-period").addEventListener("click", function(e) {
-                    var minTime = document.getElementById("start-date").valueAsDate.getTime(),
-                        maxTime = document.getElementById("end-date").valueAsDate.getTime()
-                    filterModal.style.display = null
-                    resolve([{"min": minTime, "max": maxTime}, data])
-                }, {once: true})
-            }).then(function(result) {
-                var dates = result[0],
-                    data = result[1];
-
-                console.log(dates)
-                
-                data = data
-                    .filter(function(d) {
-                        return d.date >= dates["min"] && d.date <= dates["max"]  
-                    })
-
-              return data
-            })
-          // calculate daily new cases
+          })// calculate daily new cases
           .then(function (data) {
             console.log(data);
             function getNewCases(currentVal) {
@@ -690,6 +659,37 @@
               return data.map(getRollAvg);
             }
           })
+          .then(function (data) {
+            var filterModal = document.querySelector("#filter-modal");
+
+            filterModal.style.display = "block";
+
+
+            document.getElementById("start-date").valueAsDate = new Date(2020, 2, 1)
+            document.getElementById("end-date").valueAsDate = new Date()
+
+            var submit = document.querySelector("#submit-time-period");
+            var clickPromise = new Promise(function(resolve) {
+                var p = this;
+                return document.querySelector("#submit-time-period").addEventListener("click", function(e) {
+                    var minTime = document.getElementById("start-date").valueAsDate.getTime(),
+                        maxTime = document.getElementById("end-date").valueAsDate.getTime()
+                    filterModal.style.display = null
+                    resolve([{"min": minTime, "max": maxTime}, data])
+                }, {once: true})
+            }).then(function(result) {
+                var dates = result[0],
+                    data = result[1];
+
+                console.log(dates)
+                
+                data = data
+                    .filter(function(d) {
+                        return d.date >= dates["min"] && d.date <= dates["max"]  
+                    })
+
+              return data
+            })
           // draw the graph
           .then(function (data) {
             let xScale = d3
