@@ -159,6 +159,10 @@
 
       .hint {font-size: 0.9rem; font-style: italic;}
 
+      .reload {text-decoration: underline; cursor: pointer;}
+
+      .reload:hover {text-decoration: none;}
+
       .submit-btn {
         margin-top: 10px;
       }
@@ -259,10 +263,11 @@
       <div class="modal-content">
         <span class="close">&times;</span>
         <p id="modal-header"></p>
-        <p class="hint">Send this file to art. You can close this window and screenshot the graph to get an image.</p>
         <button id="download-svg" onclick="downloadSVG()">
           <h4>Download SVG File</h4>
         </button>
+        <p class="hint">Send this file to art. You can close this window and screenshot the graph to get an image.</p>
+        <p class="hint" onclick="window.location.reload();">Or, <span class="reload">refresh this page to start over</span></p>
       </div>
     </div>
     <script
