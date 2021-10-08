@@ -665,8 +665,6 @@
               };
 
               data.push(todayData);
-            } else {
-              alert("The data feed is up-to-date!");
             }
 
             return data;
@@ -872,55 +870,23 @@
     }
 
     function main() {
-      var prog = document.querySelector("#load-spinner");
-      prog.style.display = "block";
+     // if no match, show the modal and take manual input
+     var dataModal = document.querySelector("#data-modal"),
+        btn = dataModal.querySelector("#submit-new-cases"),
+        close = dataModal.querySelector(".close");
 
-      var data;
-      url = "https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.dph.illinois.gov%2Fnews%2Ffeed";
-      fetch(url)
-        .then((r) => r.json())
-        .then((d) => {
-          prog.style.display = "none";
-          for (let i = 0; i < d.items.length; i++) {
-            var item = d.items[i],
-              title = item.title,
-              pubDate = new Date(item.pubDate).setHours(0, 0, 0, 0),
-              today = new Date().setHours(0, 0, 0, 0),
-              foundToday = false;
+      dataModal.style.display = "block";
 
-            if (title.startsWith("Public Health Officials Announce") && pubDate === today) {
-              var pat = /Public Health Officials Announce ([\d\,]+) New Cases of Coronavirus Disease/,
-                m = pat.exec(title),
-                n = Number(m[1].replace(",", ""));
+      close.addEventListener("click", function () {
+        dataModal.style.display = "none";
+        ILCurve("#graph");
+      });
 
-              foundToday = true;
-              ILCurve("#graph", n);
-              break;
-            }
-          }
-          if (!(foundToday)) {
-            // if no match, show the modal and take manual input
-            var dataModal = document.querySelector("#data-modal"),
-              btn = dataModal.querySelector("#submit-new-cases"),
-              close = dataModal.querySelector(".close");
-
-            dataModal.style.display = "block";
-
-            close.addEventListener("click", function () {
-              dataModal.style.display = "none";
-              ILCurve("#graph");
-            });
-
-            btn.addEventListener("click", function () {
-              var newVal = Number(document.querySelector("#new-case-box").value);
-              dataModal.style.display = "none";
-              ILCurve("#graph", newVal);
-            });
-          }
-        }).catch((err) => {
-          console.log(err)
-          alert("there was a problem fetching the data")
-        })
+      btn.addEventListener("click", function () {
+        var newVal = Number(document.querySelector("#new-case-box").value);
+        dataModal.style.display = "none";
+        ILCurve("#graph", newVal);
+      });
     }
 
     main()
